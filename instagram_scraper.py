@@ -198,22 +198,34 @@ class InstagramScraper:
 
             # Get full name
             try:
-                profile_data['full_name'] = self.page.locator('section header h2').inner_text()
+                profile_data['full_name'] = self.page.locator('xpath=//*/div/div/div[2]/div/div/div[1]/div[2]/div[2]/section/main/div/div/header/div/section[2]/div/div[2]/span').inner_text()
             except:
                 profile_data['full_name'] = 'N/A'
             print(f"Full name: {profile_data['full_name']}")
-            # Get stats (posts, followers, following)
-            stats = self.page.locator('section ul li').all_text_contents()
-            print(f"Profile stats raw: {stats}")
 
-            # Parse stats
-            for stat in stats[:3]:
-                if 'post' in stat.lower():
-                    profile_data['posts_count'] = self._parse_number(stat)
-                elif 'follower' in stat.lower():
-                    profile_data['followers'] = self._parse_number(stat)
-                elif 'following' in stat.lower():
-                    profile_data['following'] = self._parse_number(stat)
+            #get followers count
+            try:
+                followers_text = self.page.locator('xpath=//*/div/div/div[2]/div/div/div[1]/div[2]/div[2]/section/main/div/div/header/div/section[2]/div/div[3]/div[2]/a/span/span/span').inner_text()
+                profile_data['followers'] = self._parse_number(followers_text)
+            except:
+                profile_data['followers'] = 0
+            print(f"Followers: {profile_data['followers']}")
+
+            #get posts count
+            try:
+                posts_text = self.page.locator('xpath=//*/div/div/div[2]/div/div/div[1]/div[2]/div[2]/section/main/div/div/header/div/section[2]/div/div[3]/div[1]/span/span').inner_text()
+                profile_data['posts_count'] = self._parse_number(posts_text)
+            except:
+                profile_data['posts_count'] = 0
+            print(f"Posts count: {profile_data['posts_count']}")
+
+            #get following count
+            try:
+                following_text = self.page.locator('xpath=//*/div/div/div[2]/div/div/div[1]/div[2]/div[2]/section/main/div/div/header/div/section[2]/div/div/div[3]/a/span/span/span').inner_text()
+                profile_data['following'] = self._parse_number(following_text)
+            except:
+                profile_data['following'] = 0
+            print(f"Following: {profile_data['following']}")
 
             # Get bio
             try:
@@ -246,10 +258,10 @@ class InstagramScraper:
 
             # Get post links
             post_links = self.page.locator('xpath=//*/div/div/div[2]/div/div/div[1]/div[2]/div[2]/section/main/div/div/div[2]/div/div/div/div/div/div/a').all()
-            post_urls = [link.get_attribute('href') for link in post_links[:num_posts]]
+            post_urls = [link.get_attribute('href') for link in post_links]
 
             print(f"Found {len(post_urls)} posts to scrape")
-            time.sleep(10)
+            time.sleep(2)
             # Visit each post and get details
             for idx, post_url in enumerate(post_urls, 1):
                 print(f"Scraping post {idx}/{len(post_urls)}")
@@ -259,7 +271,7 @@ class InstagramScraper:
                 posts_data.append(post_data)
 
                 time.sleep(2)
-                break
+                # break
             return posts_data
 
         except Exception as e:
@@ -269,7 +281,7 @@ class InstagramScraper:
     def _scrape_single_post(self, post_url):
         """Scrape single post details"""
         self.page.goto(post_url)
-        print('='*40)
+        print('*'*70)
         print(f"Scraping post: {post_url}")
         time.sleep(3)
 
@@ -298,9 +310,8 @@ class InstagramScraper:
         post_data = {
             'url': post_url,
             'likes': 0,
+            'hearts': 0,
             'comments': 0,
-            'caption': '',
-            'timestamp': ''
         }
 
 
@@ -323,25 +334,18 @@ class InstagramScraper:
                 post_data['likes'] = sum(likes_onComments) if likes_onComments else 0
             except:
                 pass
+            
+            #get heart likes
+            try:
+                heart_likes = self.page.locator('xpath=//div/div/div/section/div[1]/span[2]').inner_text()
+                post_data['hearts'] = self._parse_number(heart_likes)
+            except:
+                pass
 
             # Get comments count
             try:
-                comments = self.page.locator('ul li div[role="button"]').all()
-                post_data['comments'] = len(comments)
-            except:
-                pass
-
-            # Get caption
-            try:
-                caption = self.page.locator('h1').inner_text()
-                post_data['caption'] = caption[:100]  # First 100 chars
-            except:
-                pass
-
-            # Get timestamp
-            try:
-                timestamp = self.page.locator('time').get_attribute('datetime')
-                post_data['timestamp'] = timestamp
+                comments = self.page.locator('xpath=//div/div/div/section/div/span[4]').inner_text()
+                post_data['comments'] = self._parse_number(comments)
             except:
                 pass
 
@@ -352,7 +356,7 @@ class InstagramScraper:
 
     def calculate_engagement_rate(self, post_data, followers_count):
         """Calculate engagement rate for a single post"""
-        total_engagement = post_data['likes'] + post_data['comments']
+        total_engagement = post_data['likes'] + post_data['comments']+ post_data['hearts']
 
         if followers_count > 0:
             engagement_rate = (total_engagement / followers_count) * 100
@@ -407,11 +411,11 @@ class InstagramScraper:
 # Example usage
 def main():
     # Your Instagram credentials
-    USERNAME = ""
-    PASSWORD = ""
+    USERNAME = "XXX"
+    PASSWORD = "YYY"
 
     # Profile to scrape
-    TARGET_PROFILE = "jeromepolin"  # Example: National Geographic
+    TARGET_PROFILE = "kodingnext"  # Example: National Geographic
     NUM_POSTS = 12  # Number of posts to scrape
 
     # Initialize scraper
@@ -438,15 +442,15 @@ def main():
         print("ENGAGEMENT RATES PER POST")
         print("="*50)
 
-        for idx, post in enumerate(posts_data, 1):
-            engagement_rate = scraper.calculate_engagement_rate(post, followers_count)
-            post['engagement_rate'] = engagement_rate
+        # for idx, post in enumerate(posts_data, 1):
+        #     engagement_rate = scraper.calculate_engagement_rate(post, followers_count)
+        #     post['engagement_rate'] = engagement_rate
 
-            print(f"\nPost {idx}:")
-            print(f"  URL: {post['url']}")
-            print(f"  Likes: {post['likes']:,}")
-            print(f"  Comments: {post['comments']:,}")
-            print(f"  Engagement Rate: {engagement_rate}%")
+        #     print(f"\nPost {idx}:")
+        #     print(f"  URL: {post['url']}")
+        #     print(f"  Likes: {post['likes']:,}")
+        #     print(f"  Comments: {post['comments']:,}")
+        #     print(f"  Engagement Rate: {engagement_rate}%")
 
         # Step 5: Calculate average engagement rate
         avg_engagement = scraper.calculate_average_engagement(posts_data, followers_count)
@@ -457,7 +461,7 @@ def main():
         print(f"Profile: @{TARGET_PROFILE}")
         print(f"Followers: {followers_count:,}")
         print(f"Posts Analyzed: {len(posts_data)}")
-        print(f"Average Engagement Rate: {avg_engagement}%")
+        # print(f"Average Engagement Rate: {avg_engagement}%")
         print("="*50)
 
         # Save to JSON file
