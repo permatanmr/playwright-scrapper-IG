@@ -240,19 +240,16 @@ class InstagramScraper:
             time.sleep(3)
 
             # Scroll to load posts
-            for _ in range(3):
+            for _ in range(1):
                 self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
                 time.sleep(2)
 
             # Get post links
-            # post_links = self.page.locator('article a').all()
-            post_links = self.page.query_selector_all('xpath=//*[@id="mount_0_0_uP"]/div/div/div[2]/div/div/div[1]/div[2]/div[2]/section/main/div/div/div[2]/div/div/div/div/div[1]/div[2]/a')
-
-            print(f"Total posts found: {len(post_links)}")
+            post_links = self.page.locator('xpath=//*/div/div/div[2]/div/div/div[1]/div[2]/div[2]/section/main/div/div/div[2]/div/div/div/div/div/div/a').all()
             post_urls = [link.get_attribute('href') for link in post_links[:num_posts]]
 
             print(f"Found {len(post_urls)} posts to scrape")
-
+            time.sleep(10)
             # Visit each post and get details
             for idx, post_url in enumerate(post_urls, 1):
                 print(f"Scraping post {idx}/{len(post_urls)}")
@@ -262,7 +259,7 @@ class InstagramScraper:
                 posts_data.append(post_data)
 
                 time.sleep(2)
-
+                break
             return posts_data
 
         except Exception as e:
@@ -272,8 +269,32 @@ class InstagramScraper:
     def _scrape_single_post(self, post_url):
         """Scrape single post details"""
         self.page.goto(post_url)
+        print('='*40)
+        print(f"Scraping post: {post_url}")
         time.sleep(3)
 
+        # Scroll to bottom of comment window if present
+        try:
+            # Find the comment window element (Instagram uses a div with role="dialog" or similar)
+            comment_window = self.page.query_selector('xpath=//*/div/div/div[2]/div/div/div[1]/div[1]/div[2]/section/main/div/div[1]/div/div[2]/div/div[2]')
+            if comment_window:
+                max_attempts = 20
+                for i in range(max_attempts):
+                    val1 = self.page.evaluate('el => el.scrollTop = el.scrollHeight', comment_window)
+                    time.sleep(3)
+                    curr_scroll = self.page.evaluate('el => el.scrollHeight', comment_window)
+                    if val1 == curr_scroll:
+                        print(f"✓ Scrolled to bottom of comment window after {i+1} attempts")
+                        break
+                else:
+                    print(f"⚠️ Reached max scroll attempts ({max_attempts}) in comment window")
+                self.page.evaluate('el => el.scrollTop', comment_window)
+            else:
+                # Fallback: scroll main page
+                self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                print("✓ Scrolled to bottom of main page")
+        except Exception as e:
+            print(f"⚠️ Could not scroll comment window: {e}")
         post_data = {
             'url': post_url,
             'likes': 0,
@@ -282,11 +303,24 @@ class InstagramScraper:
             'timestamp': ''
         }
 
+
+
         try:
-            # Get likes count
+            # Get likes count for each comment
             try:
-                likes_text = self.page.locator('section span').filter(has_text='like').first.inner_text()
-                post_data['likes'] = self._parse_number(likes_text)
+                raw_likes_on_comments = self.page.locator("xpath=//*/div/div/div[2]/div/div/div[1]/div[1]/div[2]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[2]/div/div/div/div[2]/div[1]/div/div/span/span[contains(text(), 'likes')]")
+                likes_onComments = []
+                for text in raw_likes_on_comments.all():
+                    text_content = text.text_content()
+                    count = self._parse_number(text_content)
+                    if 'K' in text_content.replace("likes", "").strip().upper():
+                        likes_onComments.append(count * 1000)
+                    elif 'M' in text_content.replace("likes", "").strip().upper():
+                        likes_onComments.append(count * 1000000)
+                    else:
+                        likes_onComments.append(count)
+                print(likes_onComments)
+                post_data['likes'] = sum(likes_onComments) if likes_onComments else 0
             except:
                 pass
 
@@ -373,11 +407,11 @@ class InstagramScraper:
 # Example usage
 def main():
     # Your Instagram credentials
-    USERNAME = "dbt.prasmul"
-    PASSWORD = "eseprasmul"
+    USERNAME = ""
+    PASSWORD = ""
 
     # Profile to scrape
-    TARGET_PROFILE = "natgeo"  # Example: National Geographic
+    TARGET_PROFILE = "jeromepolin"  # Example: National Geographic
     NUM_POSTS = 12  # Number of posts to scrape
 
     # Initialize scraper
@@ -449,3 +483,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
