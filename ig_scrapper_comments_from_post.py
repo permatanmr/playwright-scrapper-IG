@@ -232,7 +232,14 @@ class InstagramCommentsScraper:
             print(f"Error loading post: {e}")
             return []
 
-        comments_data = []
+        comments_data = {
+            'likes':0,
+            'hearts':0,
+            'comments': 0,
+            'comments_details': []
+        }
+
+        comments_detail = []
 
         try:
             # Find and scroll the comment window
@@ -245,22 +252,37 @@ class InstagramCommentsScraper:
                 print("⚠️ Comment window not found, attempting to scroll main page")
                 self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
                 time.sleep(2)
-
             # Extract all comments
-            comments_xpath = 'xpath=//article//div[@role="presentation"]//div[contains(@class, "x1iyjqo2")]'
+            comments_xpath = '//*/div/div/div[2]/div/div/div[1]/div[1]/div[2]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div/div'
             comment_elements = self.page.locator(comments_xpath).all()
             print(f"Found {len(comment_elements)} comment elements")
+            comments_data['comments'] = len(comment_elements)
+
+            #extract likes 
+            likes_xpath = '//*/div/div/div[2]/div/div/div[1]/div[1]/div[2]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[2]/div/div/div/div/div/div/div[1]/span/span'
+            likes_elements = self.page.locator(likes_xpath).all()   
+            print(f"Found {len(likes_elements)} likes elements")
+            comments_data['likes'] = len(likes_elements)
+
+            #extract heart
+            try:
+                heart_likes = self.page.locator('xpath=//div/div/div/section/div[1]/span[2]').inner_text()
+                comments_data['hearts'] = self._parse_number(heart_likes)
+            except:
+                pass
+            print(f"✓ Extracted hearts: {comments_data['hearts']}")
 
             for idx, comment_elem in enumerate(comment_elements, 1):
                 try:
                     comment_info = self._extract_comment_data(comment_elem, idx)
                     if comment_info:
-                        comments_data.append(comment_info)
+                        comments_detail.append(comment_info)
                 except Exception as e:
                     print(f"Error extracting comment {idx}: {e}")
                     continue
 
-            print(f"\n✓ Successfully extracted {len(comments_data)} comments")
+            comments_data['comments_details'] = comments_detail
+            print(f"\n✓ Successfully extracted {len(comments_detail)} comments")
             return comments_data
 
         except Exception as e:
@@ -274,50 +296,43 @@ class InstagramCommentsScraper:
                 'index': idx,
                 'username': 'N/A',
                 'text': 'N/A',
-                'likes': 0,
-                'timestamp': 'N/A',
-                'is_reply': False,
             }
 
-            # Try to extract username
-            try:
-                username_elem = comment_elem.query_selector('a[title]')
-                if username_elem:
-                    comment_data['username'] = username_elem.get_attribute('title')
-            except:
-                pass
+            # Extract Username
+            username_selectors = [
+                'xpath=.//div[1]/span[1]/span',  # Relative xpath to link
+            ]
+            
+            for selector in username_selectors:
+                try:
+                    username_elem = comment_elem.locator(selector).first
+                    username_text = username_elem.inner_text(timeout=3000)  # Shorter 3s timeout
+                    if username_text and username_text.strip():
+                        print(f"✓ Extracted username for comment {idx}: {username_text}")
+                        comment_data['username'] = username_text.strip()
 
-            # Try to extract comment text
-            try:
-                text_elem = comment_elem.query_selector('span[style]')
-                if text_elem:
-                    comment_data['text'] = text_elem.inner_text()
-            except:
-                pass
-
-            # Try to extract likes
-            try:
-                likes_elem = comment_elem.query_selector('span[aria-label*="like"]')
-                if likes_elem:
-                    likes_text = likes_elem.inner_text()
-                    comment_data['likes'] = self._parse_number(likes_text)
-            except:
-                pass
-
-            # Try to extract timestamp
-            try:
-                time_elem = comment_elem.query_selector('time')
-                if time_elem:
-                    comment_data['timestamp'] = time_elem.get_attribute('datetime')
-            except:
-                pass
-
-            # Check if it's a reply (indented)
-            try:
-                class_attr = comment_elem.get_attribute('class')
-                comment_data['is_reply'] = 'x1iyjqo2 xh8yej3' in class_attr if class_attr else False
-            except:
-                pass
+                        break
+                except Exception as selector_err:
+                    print(f"✗ Failed to extract username for comment {idx} with {selector}: {str(selector_err)[:60]}")
+                    continue
+            
+            # Extract Comment Text
+            text_selectors = [
+                'xpath=.//div/div[2]/span',  # Relative xpath to comment text
+                'xpath=.//div/span/div/span',  # Alternative path for text
+            ]
+            
+            for selector in text_selectors:
+                try:
+                    text_elem = comment_elem.locator(selector).first
+                    text_content = text_elem.inner_text(timeout=3000)
+                    if text_content and text_content.strip():
+                        print(f"✓ Extracted comment text for comment {idx}: {text_content[:100]}...")
+                        comment_data['text'] = text_content.strip()
+                        break
+                except Exception as selector_err:
+                    print(f"✗ Failed to extract comment text for comment {idx} with {selector}: {str(selector_err)[:60]}")
+                    continue
 
             return comment_data
 
@@ -355,13 +370,12 @@ class InstagramCommentsScraper:
 # Example usage
 def main():
     # Your Instagram credentials
-    USERNAME = "dbt.prasmul"
-    PASSWORD = "eseprasmul"
+    USERNAME = "XXX"
+    PASSWORD = "XXX"
 
     # List of post URLs to scrape comments from
     POST_URLS = [
-        "https://www.instagram.com/p/XXXXXXXXXX/",  # Replace with actual post URLs
-        "https://www.instagram.com/p/YYYYYYYYYY/",
+        "https://www.instagram.com/sam_jeth/reel/DMa41oMhU7d/",  
     ]
 
     # Initialize scraper
@@ -386,7 +400,7 @@ def main():
             'scraped_at': datetime.now().isoformat()
         }
 
-        filename = f'instagram_comments_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        filename = f'./output_comments/instagram_comments_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(output, f, indent=2, ensure_ascii=False)
 
@@ -396,12 +410,12 @@ def main():
         print("\n" + "="*70)
         print("SUMMARY")
         print("="*70)
-        for post_url, comments in all_comments.items():
-            print(f"\nPost: {post_url}")
-            print(f"  Comments extracted: {len(comments)}")
-            if comments:
-                total_likes = sum(c.get('likes', 0) for c in comments)
-                print(f"  Total comment likes: {total_likes}")
+        # for post_url, comments in all_comments.items():
+        #     print(f"\nPost: {post_url}")
+        #     print(f"  Comments extracted: {len(comments)}")
+        #     if comments:
+        #         total_likes = sum(c.get('likes', 0) for c in comments)
+        #         print(f"  Total comment likes: {total_likes}")
 
     except Exception as e:
         print(f"Error: {e}")
