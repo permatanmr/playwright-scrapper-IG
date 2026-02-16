@@ -411,11 +411,13 @@ class InstagramScraper:
 # Example usage
 def main():
     # Your Instagram credentials
-    USERNAME = "XXX"
-    PASSWORD = "YYY"
+    USERNAME = "dbt.prasmul"
+    PASSWORD = "eseprasmul"
+
+    # TARGET_PROFILE = ["sylviemily","zed.verhaal","sarjanakom.edi","fellinhisgrace","picsnpris","deardeasi_","alba.nae","_itwillbe.fine","codewithnoel","ginesidequest","notletterbox","aureliusprojects","celyn.writes","forgeitmenots","allesnippets","ma.lleek","vigwagonfoundation","pudinginaja.jkt","sam_jeth","felixnavidadd._","promptwarden","poppinpops.ofc","ivanbun_101","owencsoe","viewsbyger","alexplain.tv","stevenpen05","berdstories","cookwithstev"]
 
     # Profile to scrape
-    TARGET_PROFILE = "kodingnext"  # Example: National Geographic
+    TARGET_PROFILE = ["picsnpris"]  # Example: National Geographic
     NUM_POSTS = 12  # Number of posts to scrape
 
     # Initialize scraper
@@ -428,54 +430,56 @@ def main():
         # Step 1: Login
         scraper.login()
 
-        # Step 2: Scrape profile
-        profile_data = scraper.scrape_profile(TARGET_PROFILE)
+        for profile in TARGET_PROFILE:
+            print(f"Scraping profile: {profile}")
+            # Step 2: Scrape profile
+            profile_data = scraper.scrape_profile(profile)
 
-        # Step 3: Scrape posts
-        posts_data = scraper.scrape_posts(TARGET_PROFILE, NUM_POSTS)
+            # Step 3: Scrape posts
+            posts_data = scraper.scrape_posts(profile, NUM_POSTS)
 
-        # Get followers count for engagement calculation
-        followers_count = profile_data.get('followers', 0)
+            # Get followers count for engagement calculation
+            followers_count = profile_data.get('followers', 0)
 
-        # Step 4: Calculate engagement rate for each post
-        print("\n" + "="*50)
-        print("ENGAGEMENT RATES PER POST")
-        print("="*50)
+            # Step 4: Calculate engagement rate for each post
+            print("\n" + "="*50)
+            print("ENGAGEMENT RATES PER POST")
+            print("="*50)
 
-        # for idx, post in enumerate(posts_data, 1):
-        #     engagement_rate = scraper.calculate_engagement_rate(post, followers_count)
-        #     post['engagement_rate'] = engagement_rate
+            # for idx, post in enumerate(posts_data, 1):
+            #     engagement_rate = scraper.calculate_engagement_rate(post, followers_count)
+            #     post['engagement_rate'] = engagement_rate
 
-        #     print(f"\nPost {idx}:")
-        #     print(f"  URL: {post['url']}")
-        #     print(f"  Likes: {post['likes']:,}")
-        #     print(f"  Comments: {post['comments']:,}")
-        #     print(f"  Engagement Rate: {engagement_rate}%")
+            #     print(f"\nPost {idx}:")
+            #     print(f"  URL: {post['url']}")
+            #     print(f"  Likes: {post['likes']:,}")
+            #     print(f"  Comments: {post['comments']:,}")
+            #     print(f"  Engagement Rate: {engagement_rate}%")
 
-        # Step 5: Calculate average engagement rate
-        avg_engagement = scraper.calculate_average_engagement(posts_data, followers_count)
+            # Step 5: Calculate average engagement rate
+            avg_engagement = scraper.calculate_average_engagement(posts_data, followers_count)
 
-        print("\n" + "="*50)
-        print("SUMMARY")
-        print("="*50)
-        print(f"Profile: @{TARGET_PROFILE}")
-        print(f"Followers: {followers_count:,}")
-        print(f"Posts Analyzed: {len(posts_data)}")
-        # print(f"Average Engagement Rate: {avg_engagement}%")
-        print("="*50)
+            print("\n" + "="*50)
+            print("SUMMARY")
+            print("="*50)
+            print(f"Profile: @{profile}")
+            print(f"Followers: {followers_count:,}")
+            print(f"Posts Analyzed: {len(posts_data)}")
+            # print(f"Average Engagement Rate: {avg_engagement}%")
+            print("="*50)
 
-        # Save to JSON file
-        output = {
-            'profile': profile_data,
-            'posts': posts_data,
-            'average_engagement_rate': avg_engagement,
-            'scraped_at': datetime.now().isoformat()
-        }
+            # Save to JSON file
+            output = {
+                'profile': profile_data,
+                'posts': posts_data,
+                'average_engagement_rate': avg_engagement,
+                'scraped_at': datetime.now().isoformat()
+            }
 
-        with open(f'{TARGET_PROFILE}_data.json', 'w') as f:
-            json.dump(output, f, indent=2)
+            with open(f'./output/{profile}_data.json', 'w') as f:
+                json.dump(output, f, indent=2)
 
-        print(f"\nData saved to {TARGET_PROFILE}_data.json")
+            print(f"\nData saved to ./output/{profile}_data.json")
 
     except Exception as e:
         print(f"Error: {e}")
