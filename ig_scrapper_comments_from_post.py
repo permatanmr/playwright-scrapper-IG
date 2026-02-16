@@ -392,14 +392,49 @@ class InstagramCommentsScraper:
 # Example usage
 def main():
     # Your Instagram credentials
-    USERNAME = "XXX"
-    PASSWORD = "YYY"
+    USERNAME = "dbt.prasmul"
+    PASSWORD = "eseprasmul"
 
     # List of post URLs to scrape comments from
     POST_URLS = [
         "https://www.instagram.com/reel/DUrdSKuEgfL/?igsh=bHg4M3c2Y3ExaG84",
-        "https://www.instagram.com/reel/DUsbiyZEvMs/?igsh=Z3hhNHhnMmYyMjhr",         
+        "https://www.instagram.com/reel/DUsbiyZEvMs/?igsh=Z3hhNHhnMmYyMjhr",
+        "https://www.instagram.com/reel/DUsdwZdCSob/?igsh=NXRjN3AyNmw5YXVx",
+        "https://www.instagram.com/reel/DUrxz7vgds0/?igsh=M3A3dTJscWMxdnhw",
+        "https://www.instagram.com/reel/DUsT761Cdk6/?igsh=aDY4ZjUyaG1sNDBq",
+        "https://www.instagram.com/reel/DUsdwZdCSob/?igsh=NXRjN3AyNmw5YXVx",
+        "https://www.instagram.com/reel/DUr2CMAkrgv/?igsh=aWN6dTBrbmkxZzhx",
+        "https://www.instagram.com/reel/DUrdSKuEgfL/?igsh=bHg4M3c2Y3ExaG84",
+        "https://www.instagram.com/reel/DUsdwZdCSob/?igsh=NXRjN3AyNmw5YXVx",
+        "https://www.instagram.com/reel/DUsruvUko8E/?igsh=MXF2cHMyd3FnZ3Rwbg==",
+        "https://www.instagram.com/reel/DUryLCYkw1J/?igsh=NG5wa2FwcGR6YjUw",
+        "https://www.instagram.com/reel/DUrzCwJE2dG/?igsh=N2dvd290djN0ajF2",
+        "https://www.instagram.com/reel/DUrzaYAEl1B/?igsh=Nm41enZ2a3l2dXEx",
+        "https://www.instagram.com/reel/DUrx-XTAXfE/?igsh=MXBiN3lkcnVscXg3ZQ==",
+        "https://www.instagram.com/reel/DUrxYtdEZnh/?igsh=MXQ5dmJkdzJvM3Vsag==",
+        "https://www.instagram.com/reel/DUsdwZdCSob/?igsh=NXRjN3AyNmw5YXVx",
+        "https://www.instagram.com/reel/DUrdSKuEgfL/?igsh=bHg4M3c2Y3ExaG84",
+        "https://www.instagram.com/reel/DUsTPeskVGR/?igsh=ZG5iMWV4NnoxdXNu",
+        "https://www.instagram.com/reel/DUrzSb6j34H/?igsh=ZzYzMXRyYWYyZGwx",
+        "https://www.instagram.com/reel/DUsdwZdCSob/?igsh=NXRjN3AyNmw5YXVx",
+        "https://www.instagram.com/reel/DUseQ4bE_0t/?igsh=Y3locDU3cGozcXdo",
+        "https://www.instagram.com/reel/DUsFpZyE86v/?igsh=cHhjYm1vNmo3NTIw",
+        "https://www.instagram.com/reel/DUsQE-LkiHJ/?igsh=ZDF6dG40anRvNmh3",
+        "https://www.instagram.com/reel/DUr0GqKE_IZ/?igsh=MTB6dGx2N3d6dml4Mg==",
+        "https://www.instagram.com/reel/DUrzTtjEi3m/?igsh=MTVyc202cTAybDUyeg==",
+        "https://www.instagram.com/reel/DUr4lvZEnIj/?igsh=dzRhMGV5MXc4OXpq",
+        "https://www.instagram.com/reel/DUr-IEWiS-2/?igsh=dmw1MWFkYjFybHR4",
+        "https://www.instagram.com/reel/DUsY2VKjAjS/?igsh=MWI1enJrdmJic3V5eg=="
     ]
+
+    # Remove duplicates while preserving original order
+    seen_urls = set()
+    unique_urls = []
+    for u in POST_URLS:
+        if u not in seen_urls:
+            seen_urls.add(u)
+            unique_urls.append(u)
+    POST_URLS = unique_urls
 
     # Initialize scraper
     scraper = InstagramCommentsScraper(USERNAME, PASSWORD)
@@ -429,9 +464,52 @@ def main():
 
         print(f"\n✓ Data saved to {filename}")
 
+        # Create stacked bar chart aggregating likes, hearts, and comments per username
+        try:
+            from collections import defaultdict
+            import matplotlib.pyplot as plt
+            import numpy as np
+
+            agg = defaultdict(lambda: {'likes': 0, 'hearts': 0, 'comments': 0})
+            for post in all_comments:
+                uname = post.get('username') or 'N/A'
+                agg[uname]['likes'] += int(post.get('likes', 0) or 0)
+                agg[uname]['hearts'] += int(post.get('hearts', 0) or 0)
+                agg[uname]['comments'] += int(post.get('comments', 0) or 0)
+
+            if agg:
+                usernames = list(agg.keys())
+                likes = [agg[u]['likes'] for u in usernames]
+                hearts = [agg[u]['hearts'] for u in usernames]
+                comments_counts = [agg[u]['comments'] for u in usernames]
+
+                x = np.arange(len(usernames))
+                width = 0.6
+                fig, ax = plt.subplots(figsize=(max(6, len(usernames) * 0.6), 6))
+
+                p1 = ax.bar(x, likes, width, label='Likes')
+                p2 = ax.bar(x, hearts, width, bottom=likes, label='Hearts')
+                bottom_likes_hearts = [l + h for l, h in zip(likes, hearts)]
+                p3 = ax.bar(x, comments_counts, width, bottom=bottom_likes_hearts, label='Comments')
+
+                ax.set_xticks(x)
+                ax.set_xticklabels(usernames, rotation=45, ha='right')
+                ax.set_ylabel('Count')
+                ax.set_title('Aggregated Likes, Hearts and Comments per Username')
+                ax.legend()
+
+                plt.tight_layout()
+                chart_filename = f'./chart/comments_summary_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
+                plt.savefig(chart_filename)
+                print(f"✓ Stacked bar chart saved to {chart_filename}")
+            else:
+                print("No data available to plot.")
+        except Exception as e:
+            print(f"Failed to create chart: {e}")
+
         # Print summary
         print("\n" + "="*70)
-        print("SUMMARY")
+        print("END OF SCRAPING")
         print("="*70)
         # for post_url, comments in all_comments.items():
         #     print(f"\nPost: {post_url}")
