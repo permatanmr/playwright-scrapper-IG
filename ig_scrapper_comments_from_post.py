@@ -233,6 +233,8 @@ class InstagramCommentsScraper:
             return []
 
         comments_data = {
+            'username': 'N/A',
+            'url': post_url,
             'likes':0,
             'hearts':0,
             'comments': 0,
@@ -252,11 +254,31 @@ class InstagramCommentsScraper:
                 print("⚠️ Comment window not found, attempting to scroll main page")
                 self.page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
                 time.sleep(2)
+
             # Extract all comments
             comments_xpath = '//*/div/div/div[2]/div/div/div[1]/div[1]/div[2]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div/div'
             comment_elements = self.page.locator(comments_xpath).all()
             print(f"Found {len(comment_elements)} comment elements")
             comments_data['comments'] = len(comment_elements)
+           
+             # Extract Username
+            username_selectors = [
+                'xpath=//div/div/div[1]/div/span/div/span/div/a',  # Collaborator detection path
+                'xpath=//div/div/span/span/span/div/a/div/div/span',  # Single posting username detection path
+            ]
+            
+            for selector in username_selectors:
+                try:
+                    username_elem = self.page.locator(selector).first
+                    username_text = username_elem.inner_text(timeout=3000)  # Shorter 3s timeout
+                    if username_text and username_text.strip():
+                        print(f"✓ Extracted username for comment: {username_text}")
+                        comments_data['username'] = username_text.strip()
+
+                        break
+                except Exception as selector_err:
+                    print(f"✗ Failed to extract username for comment  with {selector}: {str(selector_err)[:60]}")
+                    continue
 
             #extract likes 
             likes_xpath = '//*/div/div/div[2]/div/div/div[1]/div[1]/div[2]/section/main/div/div[1]/div/div[2]/div/div[2]/div/div[2]/div/div/div/div/div/div/div[1]/span/span'
@@ -342,8 +364,8 @@ class InstagramCommentsScraper:
 
     def scrape_posts_comments(self, post_urls):
         """Scrape comments from multiple posts"""
-        all_comments = {}
-
+        # all_comments = {}
+        results = []
         for idx, post_url in enumerate(post_urls, 1):
             print(f"\n[{idx}/{len(post_urls)}] Processing post...")
             
@@ -352,11 +374,11 @@ class InstagramCommentsScraper:
                 post_url = f"https://www.instagram.com{post_url}"
 
             comments = self.scrape_post_comments(post_url)
-            all_comments[post_url] = comments
-            
+            # all_comments[post_url] = comments
+            results.append(comments)
             time.sleep(2)  # Delay between posts
 
-        return all_comments
+        return results
 
     def close(self):
         """Close browser and playwright"""
@@ -371,11 +393,12 @@ class InstagramCommentsScraper:
 def main():
     # Your Instagram credentials
     USERNAME = "XXX"
-    PASSWORD = "XXX"
+    PASSWORD = "YYY"
 
     # List of post URLs to scrape comments from
     POST_URLS = [
-        "https://www.instagram.com/sam_jeth/reel/DMa41oMhU7d/",  
+        "https://www.instagram.com/reel/DUrdSKuEgfL/?igsh=bHg4M3c2Y3ExaG84",
+        "https://www.instagram.com/reel/DUsbiyZEvMs/?igsh=Z3hhNHhnMmYyMjhr",         
     ]
 
     # Initialize scraper
@@ -395,9 +418,9 @@ def main():
 
         # Save results to JSON
         output = {
-            'posts_comments': all_comments,
             'total_posts': len(POST_URLS),
-            'scraped_at': datetime.now().isoformat()
+            'scraped_at': datetime.now().isoformat(),
+            'posts_comments': all_comments,
         }
 
         filename = f'./output_comments/instagram_comments_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
