@@ -7,6 +7,7 @@ from playwright.sync_api import sync_playwright
 import time
 import json
 from datetime import datetime
+import asyncio
 
 class InstagramScraper:
     def __init__(self, username, password):
@@ -20,8 +21,14 @@ class InstagramScraper:
         """Initialize Playwright and browser"""
         self.playwright = sync_playwright().start()
         # Use chromium with headless=False to see the browser (set True for background)
-        self.browser = self.playwright.chromium.launch(headless=False)
-        self.page = self.browser.new_context().new_page()
+        # self.browser = self.playwright.chromium.launch(headless=False)
+        # self.page = self.browser.new_context().new_page()
+        # start()
+        # self.playwright = sync_playwright().start()
+        user_data_dir = r'./user_data'  # choose folder to persist profile/cache
+        self.context = self.playwright.chromium.launch_persistent_context(user_data_dir, headless=False)
+        # launch_persistent_context may create an initial page
+        self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
 
     def _is_login_page(self):
         """Detect if we're on Instagram login page"""
@@ -411,13 +418,13 @@ class InstagramScraper:
 # Example usage
 def main():
     # Your Instagram credentials
-    USERNAME = "dbt.prasmul"
-    PASSWORD = "eseprasmul"
+    USERNAME = "XXX"
+    PASSWORD = "YYY"
 
-    # TARGET_PROFILE = ["sylviemily","zed.verhaal","sarjanakom.edi","fellinhisgrace","picsnpris","deardeasi_","alba.nae","_itwillbe.fine","codewithnoel","ginesidequest","notletterbox","aureliusprojects","celyn.writes","forgeitmenots","allesnippets","ma.lleek","vigwagonfoundation","pudinginaja.jkt","sam_jeth","felixnavidadd._","promptwarden","poppinpops.ofc","ivanbun_101","owencsoe","viewsbyger","alexplain.tv","stevenpen05","berdstories","cookwithstev"]
+    # TARGET_PROFILE = ["sylviemily","zed.verhaal","sarjanakom.edi","fellinhisgrace","picsnpris","deardeasi_","alba.nae","_itwillbe.fine","codewithnoel","ginesidequest","notletterbox","aureliusprojects","celyn.writes","forgeitmenots","allesapparels","ma.lleek","vigpassport","pudinginaja.jkt","sam_jeth","felixnavidadd._","promptwarden","poppinpops.ofc","ivanbun_101","owencsoe","viewsbyger","alexplain.tv","stevenpen05","berdstories","cookwithstev","joshmikhael8", "mahasiswa.tech","platedbynat_"]
 
     # Profile to scrape
-    TARGET_PROFILE = ["picsnpris"]  # Example: National Geographic
+    TARGET_PROFILE = ["allesapparels", "joshmikhael8","vigpassport", "mahasiswa.tech","platedbynat_"]  # Example: National Geographic
     NUM_POSTS = 12  # Number of posts to scrape
 
     # Initialize scraper
@@ -476,10 +483,11 @@ def main():
                 'scraped_at': datetime.now().isoformat()
             }
 
-            with open(f'./output/{profile}_data.json', 'w') as f:
+            filename = f'./output/{profile}-{datetime.now().strftime("%Y%m%d")}_data.json'
+            with open(filename, 'w') as f:
                 json.dump(output, f, indent=2)
 
-            print(f"\nData saved to ./output/{profile}_data.json")
+            print(f"\nData saved to {filename}")
 
     except Exception as e:
         print(f"Error: {e}")
